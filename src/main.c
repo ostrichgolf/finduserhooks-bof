@@ -1,8 +1,8 @@
 #include <windows.h>
 
-#include "../include/beacon.h"
-#include "../include/peb.h"
-#include "../include/helpers.h"
+#include "beacon.h"
+#include "peb.h"
+#include "helpers.h"
 
 // BOF entry point
 void go()

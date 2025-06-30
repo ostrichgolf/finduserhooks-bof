@@ -1,8 +1,8 @@
 #include <windows.h>
 #include <stdio.h>
 
-#include "../include/beacon.h"
-#include "../include/peb.h"
+#include "beacon.h"
+#include "peb.h"
 
 LDR_DATA_TABLE_ENTRY *GetNextLoadedModule(LDR_DATA_TABLE_ENTRY *CurrentModule)
 {
