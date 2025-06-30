@@ -1,0 +1,27 @@
+alias hooks {
+    local('$bid $barch $handle $data');
+
+    $bid    = $1;
+    $barch  = beacon_arch($bid);
+
+    if ($barch !~ "x64") {
+        beacon_error($bid, "This BOF only supports x64 beacons.\n");
+        return;
+    }
+
+    $handle = openf(script_resource("bin/finduserhooks.x64.o"));
+    $data   = readb($handle, -1);
+    closef($handle);
+
+    beacon_inline_execute($bid, $data, "go", "");
+}
+
+beacon_command_register(
+    "hooks",
+    "Detect hooks placed in syscalls and functions",
+    "
+Command: hooks
+Summary: Detects inline hooks in syscalls and functions.
+Usage:   hooks
+"
+);
