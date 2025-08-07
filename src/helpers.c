@@ -3,6 +3,7 @@
 
 #include "beacon.h"
 #include "peb.h"
+#include "bofdefs.h"
 
 LDR_DATA_TABLE_ENTRY *GetNextLoadedModule(LDR_DATA_TABLE_ENTRY *CurrentModule)
 {
@@ -48,7 +49,7 @@ SIZE_T WCharStringToCharString(PCHAR Destination, PWCHAR Source, SIZE_T MaximumA
 // Check if a file exists on disk and is not a directory
 BOOL FileExistsW(LPCWSTR szPath)
 {
-    DWORD dwAttrib = GetFileAttributesW(szPath);
+    DWORD dwAttrib = KERNEL32$GetFileAttributesW(szPath);
 
     return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
@@ -63,7 +64,7 @@ WORD currentOutSize __attribute__((section(".data"))) = 0;
 
 LPVOID MemAlloc(SIZE_T dwBytes)
 {
-    LPVOID mem = VirtualAlloc(NULL, dwBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    LPVOID mem = KERNEL32$VirtualAlloc(NULL, dwBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
     MEMORY_BANK[BANK_COUNT++] = mem;
     return mem;
 }
@@ -81,13 +82,13 @@ void SEND_OUT(BOOL done)
     }
     if (done)
     {
-        HeapFree(GetProcessHeap(), 0, globalOut);
+        KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, globalOut);
     }
 }
 
 int INIT_BOF()
 {
-    globalOut = HeapAlloc(GetProcessHeap(), 0, OutBlockSize);
+    globalOut = KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), 0, OutBlockSize);
     globalOutSize = OutBlockSize;
     return 1;
 }
@@ -96,7 +97,7 @@ void PRINT_OUT(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    int bufSize = vsnprintf(NULL, 0, format, args);
+    int bufSize = MSVCRT$vsnprintf(NULL, 0, format, args);
     va_end(args);
 
     if (bufSize == -1)
@@ -104,7 +105,7 @@ void PRINT_OUT(char *format, ...)
 
     if (bufSize + currentOutSize < globalOutSize)
     {
-        vsnprintf(globalOut + currentOutSize, bufSize, format, args);
+        MSVCRT$vsnprintf(globalOut + currentOutSize, bufSize, format, args);
         currentOutSize += bufSize;
     }
     else
@@ -112,13 +113,13 @@ void PRINT_OUT(char *format, ...)
         SEND_OUT(FALSE);
         if (bufSize <= globalOutSize)
         {
-            vsnprintf(globalOut + currentOutSize, bufSize, format, args);
+            MSVCRT$vsnprintf(globalOut + currentOutSize, bufSize, format, args);
             currentOutSize += bufSize;
         }
         else
         {
             char *tmpOut = MemAlloc(bufSize);
-            vsnprintf(tmpOut, bufSize, format, args);
+            MSVCRT$vsnprintf(tmpOut, bufSize, format, args);
             BeaconOutput(CALLBACK_OUTPUT, tmpOut, bufSize);
             //            MemFree(tmpOut);
         }
@@ -129,9 +130,9 @@ void FreeBank()
 {
     for (int i = 0; i < BANK_COUNT; i++)
     {
-        VirtualFree(MEMORY_BANK[i], 0, MEM_RELEASE);
+        KERNEL32$VirtualFree(MEMORY_BANK[i], 0, MEM_RELEASE);
     }
-    VirtualFree(MEMORY_BANK, 0, MEM_RELEASE);
+    KERNEL32$VirtualFree(MEMORY_BANK, 0, MEM_RELEASE);
 }
 
 void END_BOF()

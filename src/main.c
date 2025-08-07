@@ -2,7 +2,8 @@
 
 #include "beacon.h"
 #include "peb.h"
-#include "helpers.h"
+#include "helpers.c"
+#include "bofdefs.h"
 
 // BOF entry point
 void go()
@@ -25,7 +26,7 @@ void go()
         Size = WCharStringToCharString(ModulePath, currentModule->FullDllName.Buffer, currentModule->FullDllName.Length);
 
         // Extract filename from path
-        char *LastBackSlash = strrchr(ModulePath, '\\');
+        char *LastBackSlash = MSVCRT$strrchr(ModulePath, '\\');
         char FileName[MAX_PATH];
 
         // Skip unloaded modules
@@ -35,8 +36,8 @@ void go()
         }
 
         // Skip non-DLL modules
-        char *FileExtension = strrchr(ModulePath, '.');
-        if (stricmp(FileExtension, ".dll") != 0)
+        char *FileExtension = MSVCRT$strrchr(ModulePath, '.');
+        if (MSVCRT$_stricmp(FileExtension, ".dll") != 0)
         {
             continue;
         }
@@ -50,20 +51,20 @@ void go()
         // Extract and display the module filename
         if (LastBackSlash != NULL && Size < MAX_PATH)
         {
-            strncpy(FileName, LastBackSlash + 1, MAX_PATH - 1);
+            MSVCRT$strncpy(FileName, LastBackSlash + 1, MAX_PATH - 1);
             FileName[MAX_PATH - 1] = '\0';
-            PRINT_OUT("\n[+] Module %s\n", FileName);
+            PRINT_OUT("[+] Module %s\n", FileName);
         }
         else
         {
-            PRINT_OUT("\n[+] Module %s\n", ModulePath);
+            PRINT_OUT("[+] Module %s\n", ModulePath);
         }
 
         // Verify the DOS header of the DLL
         PIMAGE_DOS_HEADER pDosHdr = (PIMAGE_DOS_HEADER)currentModule->DllBase;
         if (pDosHdr->e_magic != IMAGE_DOS_SIGNATURE)
         {
-            PRINT_OUT("\n[-] Not a valid DOS header\n");
+            PRINT_OUT("[-] Not a valid DOS header\n");
             continue;
         }
 
@@ -71,7 +72,7 @@ void go()
         PIMAGE_NT_HEADERS pNtHdr = (PIMAGE_NT_HEADERS)(pDosHdr->e_lfanew + currentModule->DllBase);
         if (pNtHdr->Signature != IMAGE_NT_SIGNATURE)
         {
-            PRINT_OUT("\n[-] Not a valid NT header\n");
+            PRINT_OUT("[-] Not a valid NT header\n");
             continue;
         }
 
@@ -79,7 +80,7 @@ void go()
         IMAGE_OPTIONAL_HEADER ImgOptHdr = pNtHdr->OptionalHeader;
         if (ImgOptHdr.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC)
         {
-            PRINT_OUT("\n[-] Not a valid optional header\n");
+            PRINT_OUT("[-] Not a valid optional header\n");
             continue;
         }
 
@@ -99,19 +100,19 @@ void go()
             PVOID pFunctionAddress = (PVOID)(currentModule->DllBase + FunctionAddressArray[FunctionOrdinalArray[i]]);
 
             // Skip Zw functions
-            if (strncmp(pFunctionName, (char *)"Zw", 2) == 0)
+            if (MSVCRT$strncmp(pFunctionName, (char *)"Zw", 2) == 0)
             {
                 continue;
             }
 
             // Check for hooked syscalls in ntdll
-            if (strncmp(pFunctionName, (char *)"Nt", 2) == 0)
+            if (MSVCRT$strncmp(pFunctionName, (char *)"Nt", 2) == 0)
             {
                 // Skip known false positives
                 BOOL isFalsePositive = FALSE;
                 for (int i = 0; i < (sizeof(FalsePositives) / sizeof(FalsePositives[0])); i++)
                 {
-                    if (stricmp(pFunctionName, FalsePositives[i]) == 0)
+                    if (MSVCRT$_stricmp(pFunctionName, FalsePositives[i]) == 0)
                     {
                         isFalsePositive = TRUE;
                     }
@@ -123,16 +124,16 @@ void go()
                 }
 
                 // Check syscall stub pattern
-                if (memcmp(pFunctionAddress, "\x4C\x8B\xd1\xb8", 4) != 0 && stricmp(FileName, "ntdll.dll") == 0)
+                if (MSVCRT$memcmp(pFunctionAddress, "\x4C\x8B\xd1\xb8", 4) != 0 && MSVCRT$_stricmp(FileName, "ntdll.dll") == 0)
                 {
-                    PRINT_OUT("\n\t[+] Hooked syscall %s\n", pFunctionName);
+                    PRINT_OUT("\t[+] Hooked syscall %s\n", pFunctionName);
                     totalHooks++;
                     continue;
                 }
             }
 
             // Check for inline hooks
-            if (memcmp(pFunctionAddress, "\xE9", 1) == 0)
+            if (MSVCRT$memcmp(pFunctionAddress, "\xE9", 1) == 0)
             {
                 int relOffset = *(int *)((BYTE *)pFunctionAddress + 1);
                 BYTE *jumpTarget = (BYTE *)pFunctionAddress + 5 + relOffset;
@@ -140,14 +141,14 @@ void go()
                 // Check if jump target is outside module bounds
                 if (jumpTarget < (BYTE *)currentModule->DllBase || jumpTarget >= ((BYTE *)currentModule->DllBase + ImgOptHdr.SizeOfImage))
                 {
-                    PRINT_OUT("\n\t[+] Hooked function %s\n", pFunctionName);
+                    PRINT_OUT("\t[+] Hooked function %s\n", pFunctionName);
                     totalHooks++;
                 }
             }
         }
     }
 
-    PRINT_OUT("\n[+] Hooks found: %d\n", totalHooks);
+    PRINT_OUT("[+] Hooks found: %d\n", totalHooks);
     FreeBank();
     END_BOF();
 }

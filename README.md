@@ -35,11 +35,7 @@ If any of these checks fail, the module is silently skipped.
 
 ### How to Compile
 
-To compile this BOF, use [boflink](https://github.com/MEhrn00/boflink) with `x86_64-w64-mingw32ucrt-gcc`.
-
-> **Note**: UCRT is used instead of MSVCRT, as recommended in this [blog post](https://blog.cybershenanigans.space/posts/boflink-a-linker-for-beacon-object-files/#msvcrt-pitfalls).
-
-A helper script `compile-mingw.sh` is included to build the project on Linux using boflink and mingw32ucrt.
+To compile this BOF, simply run `make`.
 
 ---
 
