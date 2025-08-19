@@ -13,21 +13,17 @@ void go()
 
     SIZE_T Size = 0;
     int totalHooks = 0;
-    CHAR ModulePath[MAX_PATH] = {0};
+    PWSTR ModuleName;
     char *FalsePositives[] = {"NtGetTickCount", "NtQuerySystemTime", "NtdllDefWindowProc_A", "NtdllDefWindowProc_W", "NtdllDialogWndProc_A", "NtdllDialogWndProc_W", "\0"};
-
+    
     // Loop through all the loaded modules
     for (LDR_DATA_TABLE_ENTRY *currentModule = GetNextLoadedModule(NULL); currentModule != NULL; currentModule = GetNextLoadedModule(currentModule))
     {
 
-        /* These safety checks validate module integrity to prevent crashes when parsing potentially corrupted or invalid modules */
+        // These safety checks validate module integrity to prevent crashes when parsing potentially corrupted or invalid modules
 
-        // Convert module name to ANSI
-        Size = WCharStringToCharString(ModulePath, currentModule->FullDllName.Buffer, currentModule->FullDllName.Length);
-
-        // Extract filename from path
-        char *LastBackSlash = MSVCRT$strrchr(ModulePath, '\\');
-        char FileName[MAX_PATH];
+        // Extract the file name from path
+        ModuleName = SHLWAPI$PathFindFileNameW(currentModule->FullDllName.Buffer);
 
         // Skip unloaded modules
         if (currentModule->BaseDllName.Buffer == NULL)
@@ -36,8 +32,8 @@ void go()
         }
 
         // Skip non-DLL modules
-        char *FileExtension = MSVCRT$strrchr(ModulePath, '.');
-        if (MSVCRT$_stricmp(FileExtension, ".dll") != 0)
+        const wchar_t *FileExtension = MSVCRT$wcsrchr(ModuleName, '.');
+        if (MSVCRT$_wcsicmp(FileExtension, L".dll") != 0)
         {
             continue;
         }
@@ -48,17 +44,7 @@ void go()
             continue;
         }
 
-        // Extract and display the module filename
-        if (LastBackSlash != NULL && Size < MAX_PATH)
-        {
-            MSVCRT$strncpy(FileName, LastBackSlash + 1, MAX_PATH - 1);
-            FileName[MAX_PATH - 1] = '\0';
-            PRINT_OUT("[+] Module %s\n", FileName);
-        }
-        else
-        {
-            PRINT_OUT("[+] Module %s\n", ModulePath);
-        }
+        PRINT_OUT("[+] Module %ls\n", ModuleName);
 
         // Verify the DOS header of the DLL
         PIMAGE_DOS_HEADER pDosHdr = (PIMAGE_DOS_HEADER)currentModule->DllBase;
@@ -84,7 +70,7 @@ void go()
             continue;
         }
 
-        /* Safety checks ends here */
+        // Safety checks ends here
 
         // Get export directory and arrays
         PIMAGE_EXPORT_DIRECTORY pImgExportDir = (PIMAGE_EXPORT_DIRECTORY)(currentModule->DllBase + ImgOptHdr.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
@@ -124,7 +110,7 @@ void go()
                 }
 
                 // Check syscall stub pattern
-                if (MSVCRT$memcmp(pFunctionAddress, "\x4C\x8B\xd1\xb8", 4) != 0 && MSVCRT$_stricmp(FileName, "ntdll.dll") == 0)
+                if (MSVCRT$memcmp(pFunctionAddress, "\x4C\x8B\xd1\xb8", 4) != 0 && MSVCRT$_wcsicmp(ModuleName, L"ntdll.dll") == 0)
                 {
                     PRINT_OUT("\t[+] Hooked syscall %s\n", pFunctionName);
                     totalHooks++;

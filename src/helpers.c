@@ -32,20 +32,6 @@ LDR_DATA_TABLE_ENTRY *GetNextLoadedModule(LDR_DATA_TABLE_ENTRY *CurrentModule)
     return NextModule;
 }
 
-// Convert UNICODE to ANSI
-SIZE_T WCharStringToCharString(PCHAR Destination, PWCHAR Source, SIZE_T MaximumAllowed)
-{
-    int Length = MaximumAllowed;
-
-    while (--Length >= 0)
-    {
-        if (!(*Destination++ = *Source++))
-            return MaximumAllowed - Length - 1;
-    }
-
-    return MaximumAllowed - Length;
-}
-
 // Check if a file exists on disk and is not a directory
 BOOL FileExistsW(LPCWSTR szPath)
 {
